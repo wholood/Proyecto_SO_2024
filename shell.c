@@ -16,6 +16,15 @@ char* validar_operador(char* cadena, char* operador){
 }
 
 bool comando_valido(){
+    int exitStatus = system(comando_1);
+    if(exitStatus != 0){ 
+        printf("Error executing command: %s\n", comando_1);
+        return false;
+    }
+    return true;
+}
+
+bool entrada_valida(){
     printf("entrada: %s\n", entrada);
     char * separacion_1= malloc(sizeof(char)*248);
     char * separacion_2= malloc(sizeof(char)*248);
@@ -31,14 +40,7 @@ bool comando_valido(){
         return true;
     }
     else{//funcion que verifique si el comando único ingresado es válido.
-        
-        int exitStatus = system(comando_1);
-        if(exitStatus != 0){ 
-            printf("Error executing command: %s\n", comando_1);
-            return false;
-        }
-        return true;
-            
+        return comando_valido();     
     }
 
      
@@ -49,11 +51,11 @@ bool lectura(){
         printf("Leyendo\n");
         fgets(entrada, sizeof(char)*248, stdin);
         entrada = strtok(entrada, "\n");
-        
+
         if(strcmp(entrada, "salir") == 0){ //Si escribe salir retorna falso para terminar.
             return false;
         }
-        else if(comando_valido()){ //Validaciones de estructuras
+        else if(entrada_valida()){ //Validaciones de estructuras
             return true; //Tengo un comando que sirve así que se puede trabajar con él
         }
         //En caso de recibir ctrl+z o otra señal hay que hacer otro else para salir
