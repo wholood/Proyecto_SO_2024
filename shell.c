@@ -10,29 +10,38 @@
 char *entrada, *comando_1, *comando_2;
 
 char* validar_operador(char* cadena, char* operador){
-    char *token = strtok(cadena, operador);
-    do{
-        printf("token: %s\n", token);
-        return token;
-    }while(token = strtok(NULL, operador));
-    
+    comando_1 = strtok(cadena, operador);
+    comando_2 = strtok(NULL, operador);
+    return comando_1;
 }
 
 bool comando_valido(){
-    //(token = strtok(entrada, "|")) || (token = strtok(entrada, "&&"))
     printf("entrada: %s\n", entrada);
     char * separacion_1= malloc(sizeof(char)*248);
     char * separacion_2= malloc(sizeof(char)*248);
-
     strcpy(separacion_1,entrada);
     strcpy(separacion_2,entrada);
 
-    printf("separación: %s\n", validar_operador(separacion_1, "|"));
+    if(strcmp(validar_operador(separacion_1, "|"),entrada)!=0){
+        printf("Se guardó: %s y %s\n", comando_1,comando_2);
+        return true;
+    }
+    else if(strcmp(validar_operador(separacion_2, "&&"),entrada)!=0) {
+        printf("Se guardó: %s y %s\n", comando_1,comando_2);
+        return true;
+    }
+    else{//funcion que verifique si el comando único ingresado es válido.
+        
+        int exitStatus = system(comando_1);
+        if(exitStatus != 0){ 
+            printf("Error executing command: %s\n", comando_1);
+            return false;
+        }
+        return true;
+            
+    }
 
-    printf("2--entrada: %s\n", entrada);
-    printf("separación: %s\n", validar_operador(separacion_2, "&&"));
-
-    return true;
+     
 }
 
 bool lectura(){
@@ -40,8 +49,7 @@ bool lectura(){
         printf("Leyendo\n");
         fgets(entrada, sizeof(char)*248, stdin);
         entrada = strtok(entrada, "\n");
-
-
+        
         if(strcmp(entrada, "salir") == 0){ //Si escribe salir retorna falso para terminar.
             return false;
         }
@@ -60,6 +68,8 @@ bool lectura(){
 
 int main (){
     entrada = malloc(sizeof(char)*248);
+    comando_1= malloc(sizeof(char)*248);
+    comando_2= malloc(sizeof(char)*248);
 
     while(lectura()){
         //La lectura fue valida y tengo un comando correcto cargado.
