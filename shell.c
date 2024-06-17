@@ -13,7 +13,7 @@
 
 char *entrada, *linea_1, *linea_2, *comando, *argumentos[100];
 char *operador=NULL;
-int n_argumentos=0;
+int n_argumentos=0, estado;
 int pipe_errores[2];
 
 
@@ -46,12 +46,10 @@ void separar_argumentos(char* linea){
     do{
         argumentos[n_argumentos]=malloc(sizeof(char)*248);
         strcpy(argumentos[n_argumentos],arg);
-        printf("Argumento %d: %s\n", n_argumentos, argumentos[n_argumentos]);
         n_argumentos++;
     }while(arg=strtok(NULL, " "));
 
 }
-
 
 bool comando_valido(){
     pid_t hijo;
@@ -71,6 +69,7 @@ bool comando_valido(){
                 close(pipe_errores[Lectura]);
                 write(pipe_errores[Escritura],"1", sizeof(char)*2);
                 close(pipe_errores[Escritura]);
+
                 exit(-1);
             }
         }else{
@@ -86,7 +85,7 @@ bool comando_valido(){
         exit(0);    
     }
     else{
-        waitpid(hijo, NULL, 0);
+        waitpid(hijo, &estado, 0);
         
         char * cod_error = malloc(sizeof(char));
         
@@ -94,13 +93,43 @@ bool comando_valido(){
         read(pipe_errores[Lectura], cod_error, sizeof(char)*2); //Sin errores
         close(pipe_errores[Lectura]);  
         
-        if(strcmp(cod_error,"1")==0){
+        if(strcmp(cod_error,"1")==0 || estado!=0){
             printf("Padre indica error en: %s", argumentos[0]);
             return false;
         }
         else{
             return true; 
         }   
+    }
+}
+
+bool pipes(){
+    
+}
+
+bool ejecucion(){
+    if(strcmp(operador,"||")==0){ //si el operador es or
+        separar_argumentos(linea_1);
+        if(!comando_valido(linea_1)){
+            separar_argumentos(linea_2);
+            printf("\nerror linea 1 or\n");
+            return comando_valido(linea_2);
+        }
+
+        return true;    
+    }
+    else if(strcmp(operador,"|")==0){
+        printf("Ejecuto un pipe\n");
+    }
+    else if(strcmp(operador,"&&")==0){
+        separar_argumentos(linea_1);
+        if(comando_valido(linea_1)){
+            separar_argumentos(linea_2);
+            return comando_valido(linea_2);
+        }
+
+        printf("\nerror de and\n");
+        return false;
     }
 }
 
@@ -115,33 +144,18 @@ bool entrada_valida(){
 
     if(strcmp(separar_operador(separacion_1, "||"),entrada)!=0){
         identificar_operador(linea_operador);
-
-        separar_argumentos(linea_1);
-        if(!comando_valido(linea_1)){
-            separar_argumentos(linea_2);
-            printf("error linea 1");
-            return comando_valido(linea_2);
-        }
-
-        printf("salio bien el or");
-        return true;
+        return ejecucion();
+        
     }
     else if(strcmp(separar_operador(separacion_2, "&&"),entrada)!=0) {
         identificar_operador(linea_operador);
+        return ejecucion();
         
-        separar_argumentos(linea_1);
-        if(comando_valido(linea_1)){
-            separar_argumentos(linea_2);
-            //printf("linea 1 sirvió");
-            return comando_valido(linea_2);
-        }
-
-        printf("\nerror de and");
-        return false;
     }
-    else{//funcion que verifique si el comando único ingresado es válido.
+    else{
         separar_argumentos(linea_1);
-        return comando_valido();     
+        return comando_valido();   
+
     }
 
      
@@ -157,7 +171,6 @@ bool lectura(){
             return false;
         }
         else if(entrada_valida()){ //Validaciones de estructuras
-            
             return true; //Tengo un comando que sirve así que se puede trabajar con él
         }
         //En caso de recibir ctrl+z o otra señal hay que hacer otro else para salir
@@ -178,8 +191,6 @@ int main (){
 
 
     while(lectura()){};
-        //La lectura fue valida y tengo un comando correcto cargado.
-        //se corre la ejecución correspondiente al comando.
     printf("Hasta luego! \n");
     //Lectura fue salir del programa.
         
