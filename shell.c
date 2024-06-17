@@ -14,7 +14,7 @@
 char *entrada, *linea_1, *linea_2, *comando, *argumentos[100];
 char *operador=NULL;
 int n_argumentos=0, estado;
-int pipe_errores[2];
+int pipe_errores[2], pipe_comunicacion[2];
 
 
 void identificar_operador(char* linea){
@@ -87,7 +87,7 @@ bool comando_valido(){
     else{
         waitpid(hijo, &estado, 0);
         
-        char * cod_error = malloc(sizeof(char));
+        char * cod_error = malloc(sizeof(char)*2);
         
         close(pipe_errores[Escritura]);
         read(pipe_errores[Lectura], cod_error, sizeof(char)*2); //Sin errores
@@ -103,8 +103,105 @@ bool comando_valido(){
     }
 }
 
-bool pipes(){
+bool pipes(int n_comando){
+    pid_t hijo;
+    if(pipe(pipe_errores)==-1){
+        return false;
+    }
+    if(pipe(pipe_comunicacion)==-1){
+        return false;
+    }
     
+    //----------PROCESOS HIJOS
+    hijo = fork();
+    
+    if(hijo < 0){
+        return false;
+    }
+    else if(hijo==0){
+        if(n_comando==1){//abro y ejecuto el primer comando
+            printf("\ncomando 1\n");
+            close(pipe_comunicacion[Lectura]);
+            dup2(pipe_comunicacion[Escritura],STDOUT_FILENO);
+
+
+            if(n_argumentos == 1){
+                if(execvp(argumentos[0], NULL)== -1){ 
+                    close(pipe_errores[Lectura]);
+                    write(pipe_errores[Escritura],"1", sizeof(char)*2);
+                    close(pipe_errores[Escritura]);
+                    close(pipe_comunicacion[Escritura]);
+                    exit(-1);
+                }
+            }else{
+                if(execvp(argumentos[0], argumentos)== -1){
+                    close(pipe_errores[Lectura]);
+                    write(pipe_errores[Escritura],"1", sizeof(char)*2);
+                    close(pipe_errores[Escritura]);
+                    close(pipe_comunicacion[Escritura]);
+                    exit(-1);
+                } 
+            }
+            close(pipe_comunicacion[Escritura]);
+            exit(0);    
+        }
+        if(n_comando==2){//abro y ejecuto el segundo comando
+            printf("\ncomando 2\n");
+            char *argumentos_C1 = malloc(sizeof(char)*248);
+            /*close(pipe_comunicacion[Escritura]);
+            dup2(pipe_comunicacion[Lectura],STDIN_FILENO); //Sin errores
+            close(pipe_comunicacion[Lectura]);*/
+
+            char *arg = strtok(argumentos_C1, " ");
+    
+            do{
+                argumentos[n_argumentos]=malloc(sizeof(char)*248);
+
+                strcpy(argumentos[n_argumentos],arg);
+                n_argumentos++;
+            }while(arg=strtok(NULL, " "));
+
+
+            if(n_argumentos == 1){
+                if(execvp(argumentos[0], NULL)== -1){ 
+                    
+                    close(pipe_errores[Lectura]);
+                    write(pipe_errores[Escritura],"1", sizeof(char)*2);
+                    close(pipe_errores[Escritura]);
+
+                    exit(-1);
+                }
+            }else{
+                if(execvp(argumentos[0], argumentos)== -1){
+                    
+                    close(pipe_errores[Lectura]);
+                    write(pipe_errores[Escritura],"1", sizeof(char)*2);
+                    close(pipe_errores[Escritura]);
+
+                    exit(-1);
+                } 
+            }
+            exit(0);    
+        }
+    } 
+    else{
+        waitpid(hijo, &estado, 0);
+        
+        char * cod_error = malloc(sizeof(char)*2);
+        
+        close(pipe_errores[Escritura]);
+        read(pipe_errores[Lectura], cod_error, sizeof(char)*2); //Sin errores
+        close(pipe_errores[Lectura]);  
+        
+        if(strcmp(cod_error,"1")==0 || estado!=0){
+            printf("Padre indica error en: %s", argumentos[0]);
+            return false;
+        }
+        else{
+            return true; 
+        }   
+    }
+
 }
 
 bool ejecucion(){
@@ -120,6 +217,11 @@ bool ejecucion(){
     }
     else if(strcmp(operador,"|")==0){
         printf("Ejecuto un pipe\n");
+        separar_argumentos(linea_1);
+        bool resultado_comando_1 = pipes(1); //pipe recibe el numero del
+        printf("Llamando a pipe2\n");
+        separar_argumentos(linea_2);
+        bool resultado_comando_2 = pipes(2);
     }
     else if(strcmp(operador,"&&")==0){
         separar_argumentos(linea_1);
