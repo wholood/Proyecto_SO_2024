@@ -108,9 +108,7 @@ bool pipes(int n_comando){
     if(pipe(pipe_errores)==-1){
         return false;
     }
-    if(pipe(pipe_comunicacion)==-1){
-        return false;
-    }
+    
     
     //----------PROCESOS HIJOS
     hijo = fork();
@@ -123,14 +121,14 @@ bool pipes(int n_comando){
             printf("\ncomando 1\n");
             close(pipe_comunicacion[Lectura]);
             dup2(pipe_comunicacion[Escritura],STDOUT_FILENO);
-
+            close(pipe_comunicacion[Escritura]);
 
             if(n_argumentos == 1){
                 if(execvp(argumentos[0], NULL)== -1){ 
                     close(pipe_errores[Lectura]);
                     write(pipe_errores[Escritura],"1", sizeof(char)*2);
                     close(pipe_errores[Escritura]);
-                    close(pipe_comunicacion[Escritura]);
+                    
                     exit(-1);
                 }
             }else{
@@ -138,19 +136,17 @@ bool pipes(int n_comando){
                     close(pipe_errores[Lectura]);
                     write(pipe_errores[Escritura],"1", sizeof(char)*2);
                     close(pipe_errores[Escritura]);
-                    close(pipe_comunicacion[Escritura]);
                     exit(-1);
                 } 
             }
-            close(pipe_comunicacion[Escritura]);
             exit(0);    
         }
         if(n_comando==2){//abro y ejecuto el segundo comando
             printf("\ncomando 2\n");
             char *argumentos_C1 = malloc(sizeof(char)*248);
-            /*close(pipe_comunicacion[Escritura]);
+            close(pipe_comunicacion[Escritura]);
             dup2(pipe_comunicacion[Lectura],STDIN_FILENO); //Sin errores
-            close(pipe_comunicacion[Lectura]);*/
+            close(pipe_comunicacion[Lectura]);
 
             char *arg = strtok(argumentos_C1, " ");
     
@@ -290,6 +286,9 @@ int main (){
     linea_1= malloc(sizeof(char)*248);
     linea_2= malloc(sizeof(char)*248);
     operador = malloc(sizeof(char)*4);
+    if(pipe(pipe_comunicacion)==-1){
+        return false;
+    }
 
 
     while(lectura()){};
