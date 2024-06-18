@@ -238,9 +238,11 @@ bool entrada_valida(){
 bool lectura(){
     while(true){
         printf("-----Leyendo\n");
-        
         // 1. Se lee una linea completa
         fgets(entrada, sizeof(char)*248, stdin);
+        
+
+        fflush(stdout);
         
         // 2. Se elimina el salto de linea del comando
         entrada = strtok(entrada, "\n");

@@ -1,0 +1,10 @@
+ls
+a && ls
+ls && a
+b || ls
+ls || b
+gcc && echo hola
+a | b
+ls | b
+b | ls
+ls -la | wc -la
