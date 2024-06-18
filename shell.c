@@ -36,7 +36,7 @@ void identificar_operador(char* linea){
 
 char* separar_operador(char* cadena, char* operador){
     linea_1 = strtok(cadena, operador);
-    linea_2 = strtok(NULL, operador);
+    linea_2 = strtok(NULL, operador); //a && b || c
     return linea_1;
 }
 
@@ -53,7 +53,7 @@ void separar_argumentos(char* linea){
     char *arg = strtok(linea, " ");
     
     do{
-        argumentos[n_argumentos] = malloc(sizeof(char)*248);
+        argumentos[n_argumentos] = malloc(sizeof(char)*256);
         strcpy(argumentos[n_argumentos],arg);
         n_argumentos++;
     }while(arg=strtok(NULL, " "));
@@ -72,25 +72,14 @@ bool comando_valido(){
         return false;
     }
     else if(hijo==0){
-        if(n_argumentos == 1){
-            if(execvp(argumentos[0], NULL)== -1){ 
-                
-                close(pipe_errores[Lectura]);
-                write(pipe_errores[Escritura],"1", sizeof(char)*2);
-                close(pipe_errores[Escritura]);
+        if(execvp(argumentos[0], argumentos)== -1){
+            
+            close(pipe_errores[Lectura]);
+            write(pipe_errores[Escritura],"1", sizeof(char)*2);
+            close(pipe_errores[Escritura]);
 
-                exit(-1);
-            }
-        }else{
-            if(execvp(argumentos[0], argumentos)== -1){
-                
-                close(pipe_errores[Lectura]);
-                write(pipe_errores[Escritura],"1", sizeof(char)*2);
-                close(pipe_errores[Escritura]);
-
-                exit(-1);
-            } 
-        }
+            exit(-1);
+        } 
         exit(0);    
     }
     else{
@@ -103,7 +92,7 @@ bool comando_valido(){
         close(pipe_errores[Lectura]);  
         
         if(strcmp(cod_error,"1")==0 || estado!=0){
-            printf("Padre indica error en: %s", argumentos[0]);
+            printf("Error en comando: %s\n", argumentos[0]);
             return false;
         }
         else{
@@ -115,7 +104,6 @@ bool comando_valido(){
 bool pipeEscritura(){
 
     if (pipe(pipe_comunicacion) == -1){
-        printf("ERROR DE PIPE");
         exit(-1);
     }
 
@@ -124,7 +112,6 @@ bool pipeEscritura(){
     hijo1 = fork();
 
     if(hijo1 < 0){
-        printf("ERROR DE PIPE");
         exit(-1);
     } else if (hijo1 == 0){
         close(pipe_comunicacion[Lectura]);
@@ -133,7 +120,6 @@ bool pipeEscritura(){
         
         //fflush(stdout);
         if(execvp(argumentos[0], argumentos) == -1){
-            printf("ERROR DE PIPE");
             exit(-1);
         }
         exit(0);
@@ -147,7 +133,6 @@ bool pipeLectura(){
     hijo2 = fork();
 
     if(hijo2 < 0){
-        printf("ERROR DE PIPE");
         exit(-1);
     }else if(hijo2 == 0){
         close(pipe_comunicacion[Escritura]);
@@ -156,7 +141,6 @@ bool pipeLectura(){
         
         //fflush(stdout);
         if(execvp(argumentos[0], argumentos) == -1){
-            printf("ERROR DE PIPE");
             exit(-1);
         }
         exit(0);
@@ -170,14 +154,12 @@ bool ejecucion(){
         separar_argumentos(linea_1);
         if(!comando_valido(linea_1)){
             separar_argumentos(linea_2);
-            printf("\nerror linea 1 or\n");
             return comando_valido(linea_2);
         }
 
         return true;    
     }
     else if(strcmp(operador,"|")==0){
-        printf("Ejecuto un pipe\n");
 
         int estado_erroneo_1, estado_erroneo_2;
         pipeEscritura();
@@ -204,16 +186,14 @@ bool ejecucion(){
             return comando_valido(linea_2);
         }
 
-        printf("\nerror de and\n");
         return false;
     }
 }
 
 bool entrada_valida(){
-    printf("entrada: %s\n", entrada);
-    char * separacion_1= malloc(sizeof(char)*248);
-    char * separacion_2= malloc(sizeof(char)*248);
-    char * linea_operador= malloc(sizeof(char)*248);
+    char * separacion_1= malloc(sizeof(char)*256);
+    char * separacion_2= malloc(sizeof(char)*256);
+    char * linea_operador= malloc(sizeof(char)*256);
     strcpy(separacion_1,entrada);
     strcpy(separacion_2,entrada);
     strcpy(linea_operador,entrada);
@@ -237,25 +217,27 @@ bool entrada_valida(){
 
 bool lectura(){
     while(true){
-        printf("-----Leyendo\n");
+        printf("-->\t");
         // 1. Se lee una linea completa
-        fgets(entrada, sizeof(char)*248, stdin);
-        
-
+        char* resultado_lectura = fgets(entrada, sizeof(char)*256, stdin);
+        fflush(stdin);
         fflush(stdout);
         
+        if(strcmp(entrada,"\n")==0){
+            return true;
+        }
         // 2. Se elimina el salto de linea del comando
         entrada = strtok(entrada, "\n");
 
         // 3. Si escribe salir retorna falso para terminar.
-        if(strcmp(entrada, "salir") == 0){ 
+        if(strcmp(entrada, "salir") == 0 || resultado_lectura == NULL){ 
             return false;
         }
         else if(entrada_valida()){ //Validaciones de estructuras
             return true; //Tengo un comando que sirve así que se puede trabajar con él
         }
         else{
-            printf("\nComando '%s' invalido. Por favor ingresar nuevo comando.\n",entrada);   
+            printf("Comando '%s' invalido. Por favor ingresar nuevo comando.\n",entrada);   
         }    
     }
     
@@ -264,9 +246,9 @@ bool lectura(){
 
 int main (){
     
-    entrada = malloc(sizeof(char)*248);
-    linea_1= malloc(sizeof(char)*248);
-    linea_2= malloc(sizeof(char)*248);
+    entrada = malloc(sizeof(char)*1048);
+    linea_1= malloc(sizeof(char)*256);
+    linea_2= malloc(sizeof(char)*256);
     operador = malloc(sizeof(char)*4);
 
     // 1. Se crea el pipe de comunicacion
