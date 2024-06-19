@@ -250,12 +250,6 @@ int main (){
     linea_1= malloc(sizeof(char)*256);
     linea_2= malloc(sizeof(char)*256);
     operador = malloc(sizeof(char)*4);
-
-    // 1. Se crea el pipe de comunicacion
-    
-    if(pipe(pipe_comunicacion)==-1){
-        return false;
-    }
     
     // 2. Se lee cada comando
 
