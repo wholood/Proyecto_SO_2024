@@ -11,10 +11,17 @@ typedef struct{
     unsigned int tamano_corto;
     char* linea_corta;
 } stats_t;
+
 typedef struct{
     char* file;
     stats_t* estadisticas;
 }argumentos;
+
+typedef struct {
+    char *archivo_1;
+    char *archivo_2;
+    char *arc;
+} merge_args_t;
 
 
 // API's
