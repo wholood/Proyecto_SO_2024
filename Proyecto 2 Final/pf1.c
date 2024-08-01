@@ -3,6 +3,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <ctype.h>
 #include "pf1.h"
 
 #define MAX_LINE_LENGTH 1024
@@ -14,6 +15,25 @@ sem_t mutex;
 
 int comparar(const void *a, const void *b) {
     return strcasecmp(*(const char **)b, *(const char **)a);
+}
+
+// Función para eliminar espacios al principio y al final de una cadena
+char* limpiar(char* str) {
+    char* final;
+    //verifica si un carácter es un espacio en blanco (espacio, tabulación, nueva línea, etc.).
+    while(isspace((unsigned char)*str)) str++; // Avanzar el puntero si hay espacios al principio
+    //Avanzando el puntero str hasta encontrar el primer carácter no espacio.
+
+    if(*str == 0)  // Si toda las cadenas eran espacios
+        return str;
+
+    // Eliminar espacios al final
+    final = str + strlen(str) - 1;//final apunta al último carácter de la cadena
+    //retrocede el puntero final mientras el carácter al que apunta sea un espacio en blanco y final no haya retrocedido más allá del inicio de la cadena.
+    while(final > str && isspace((unsigned char)*final)) final--; 
+    final[1] = '\0'; //Como end apunta justo al ultimo caracter de la cadena entonces ahí colocamos un caracter nulo para truncar la cadena
+
+    return str;
 }
 
 void sort_final(){
@@ -124,6 +144,13 @@ void* sort_file(void* arg) {
         if (tamano_linea == 0) {
             continue;
         }
+
+        char* buffer_limpio = limpiar(buffer);
+        tamano_linea = strlen(buffer_limpio);
+        if (tamano_linea == 0) {
+            continue;
+        }
+
         if (cant_lineas >= capacidad) {
             capacidad *= 2;
             lineas = (char**)realloc(lineas, capacidad * sizeof(char*));
@@ -133,7 +160,7 @@ void* sort_file(void* arg) {
                 pthread_exit(NULL);
             }
         }
-        lineas[cant_lineas] = strdup(buffer);
+        lineas[cant_lineas] = strdup(buffer_limpio);
         if (lineas[cant_lineas] == NULL) {
             printf("Error al duplicar cadena");
             fclose(archivo);
@@ -188,7 +215,6 @@ int existe_linea(char** lineas, int num_lineas, const char* linea) {
     }
     return 0;
 }
-
 
 void* merge_archivos(void* arg) {
     merge_args_t* args = (merge_args_t*) arg;
@@ -254,7 +280,7 @@ void* merge_archivos(void* arg) {
 
         //Si la linea candidata no es nulo y no está en la lista de lineas únicas entonces
         if (linea_candidata && !existe_linea(lineas_unicas, lineas_unicas_cont, linea_candidata)) {
-            //Si el numero de linea es mayor a la cantidad máxima de la lista entonces necesito extender la lista 
+            //Si el numero de linea es mayor a la cantidad máxima de la lista entonces necesito extfinaler la lista 
             if (lineas_unicas_cont >= lineas_unicas_capacidad) {
                 //Aparto más espacio de memoria para las lineas
                 lineas_unicas_capacidad *= 10;
@@ -328,7 +354,7 @@ void multi_merge(char** archivos, int num_archivos) {
             }
         }
 
-        //espera a que los hilos de este nivel terminen incluyendo si son impares. 
+        //espera a que los hilos de este nivel terminen incluyfinalo si son impares. 
         for (int i = 0; i < next_num_archivos - num_archivos % 2; i++) {
             pthread_join(merge_hilos[i], NULL);
         }
@@ -350,8 +376,6 @@ void multi_merge(char** archivos, int num_archivos) {
 
     sort_final();
 }
-
-
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
