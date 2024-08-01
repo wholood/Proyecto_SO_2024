@@ -189,6 +189,7 @@ int existe_linea(char** lineas, int num_lineas, const char* linea) {
     return 0;
 }
 
+
 void* merge_archivos(void* arg) {
     merge_args_t* args = (merge_args_t*) arg;
     FILE* archivo_1 = fopen(args->archivo_1, "r");
@@ -349,6 +350,8 @@ void multi_merge(char** archivos, int num_archivos) {
 
     sort_final();
 }
+
+
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
