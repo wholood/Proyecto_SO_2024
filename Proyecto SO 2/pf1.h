@@ -23,6 +23,15 @@ typedef struct {
     char *arc;
 } merge_args_t;
 
+typedef struct Nodo{
+    char* string;
+    struct Nodo* siguiente;
+} Nodo;
+
+typedef struct {
+    Nodo* inicio;
+} Lista;
+
 
 // API's
 

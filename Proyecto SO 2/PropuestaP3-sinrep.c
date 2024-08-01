@@ -3,6 +3,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdbool.h>
 #include "pf1.h"
 
 #define MAX_LINE_LENGTH 1024
@@ -97,32 +98,60 @@ void* sort_file(void* arg) {
     pthread_exit(NULL);
 }
 
+void Lista_iniciar(Lista* Lista) {
+    Lista->inicio = NULL;
+}
+
+bool Lista_buscar(Lista* Lista, const char* valor) {
+    Nodo* actual = Lista->inicio;
+    while (actual) {
+        if (strcasecmp(actual->string, valor) == 0) {
+            return true;
+        }
+        actual = actual->siguiente;
+    }
+    return false;
+}
+
+void Lista_add(Lista* Lista, const char* valor) {
+    Nodo* nuevo_Nodo = (Nodo*)malloc(sizeof(Nodo));
+    nuevo_Nodo->string = strdup(valor);
+    nuevo_Nodo->siguiente = Lista->inicio;
+    Lista->inicio = nuevo_Nodo;
+}
+
+void Lista_free(Lista* Lista) {
+    Nodo* actual = Lista->inicio;
+    while (actual) {
+        Nodo* siguiente = actual->siguiente;
+        free(actual->string);
+        free(actual);
+        actual = siguiente;
+    }
+    Lista->inicio = NULL;
+}
+
 void* merge_files(void* arg) {
     merge_args_t* args = (merge_args_t*) arg;
     FILE* archivo_1 = fopen(args->archivo_1, "r");
     FILE* archivo_2 = fopen(args->archivo_2, "r");
     FILE* output = fopen(args->arc, "w");
 
-    if (!archivo_1) {
-        printf("Error al abrir archivo 1 para unir.\n");
+    if (!archivo_1 || !archivo_2 || !output) {
+        printf("Error al abrir archivos para unir.\n");
         pthread_exit(NULL);
     }
-    else if (!archivo_2) {
-        printf("Error al abrir archivo 2 para unir.\n");
-        pthread_exit(NULL);
-    }
-    else if (!output) {
-        printf("Error al abrir archivo output para unir.\n");
-        pthread_exit(NULL);
-    }
+
+    Lista lista;
+    Lista_iniciar(&lista);
 
     char linea_1[MAX_LINE_LENGTH], linea_2[MAX_LINE_LENGTH];
     char* linea_1_ptr = fgets(linea_1, sizeof(linea_1), archivo_1);
     char* linea_2_ptr = fgets(linea_2, sizeof(linea_2), archivo_2);
 
     int total_lineas_archivo_1 = 0, total_lineas_archivo_2 = 0, total_lineas_salida = 0;
-    while (linea_1_ptr || linea_2_ptr) { 
-        //mientras haya lineas que leer en almenos un archivo (si los punteros no son nulos)
+    
+    while (linea_1_ptr || linea_2_ptr) { //mientras haya lineas que leer en almenos un archivo (si los punteros no son nulos)
 
         //Elimina el caracter extra de cada linea siempre y cuando se haya leido una línea válida (el puntero no nulo)
         if (linea_1_ptr && linea_1[strlen(linea_1) - 1] == '\n') linea_1[strlen(linea_1) - 1] = '\0';
@@ -131,21 +160,31 @@ void* merge_files(void* arg) {
         //Si linea 2 es nulo o linea 1 es válida y menor que linea 2
         if (!linea_2_ptr || (linea_1_ptr && strcasecmp(linea_1, linea_2) < 0)) {
             //linea 1 se escribe en el archivo de salida, se lee la sig linea de archivo 1 y se incrementa el contador de lineas de ese archivo
-            fprintf(output, "%s\n", linea_1);
+            if (!Lista_buscar(&lista, linea_1)) {
+                fprintf(output, "%s\n", linea_1);
+                Lista_add(&lista, linea_1);
+            }
             linea_1_ptr = fgets(linea_1, sizeof(linea_1), archivo_1);
             total_lineas_archivo_1++;
         } 
         //Si linea 1 es nulo o linea 2 es válida y menor que linea 1
         else if (!linea_1_ptr || (linea_2_ptr && strcasecmp(linea_2, linea_1) < 0)) {
             //escribo linea 2
-            fprintf(output, "%s\n", linea_2);
+            if (!Lista_buscar(&lista, linea_2)) {
+                fprintf(output, "%s\n", linea_2);
+                Lista_add(&lista, linea_1);
+            }
+            
             linea_2_ptr = fgets(linea_2, sizeof(linea_2), archivo_2);
             total_lineas_archivo_2++;
         
         }
         //si ambas lineas son iguales se escribe una sola y se vuelve a leer los archivos
         else {
-            fprintf(output, "%s\n", linea_1);
+            if (!Lista_buscar(&lista, linea_1)) {
+                fprintf(output, "%s\n", linea_1);
+                Lista_add(&lista, linea_1);
+            }
             linea_1_ptr = fgets(linea_1, sizeof(linea_1), archivo_1);
             linea_2_ptr = fgets(linea_2, sizeof(linea_2), archivo_2);
             total_lineas_archivo_1++;
@@ -160,40 +199,39 @@ void* merge_files(void* arg) {
 
     sem_wait(&mutex);
     printf("Se unió \"%s\" (%d lineas totales) y \"%s\" (%d lineas totales) en \"%s\" (%d lineas archivo final)\n", args->archivo_1, total_lineas_archivo_1, args->archivo_2, total_lineas_archivo_2, args->arc, total_lineas_salida);
-    sem_post(&mutex);
+    
 
-    pthread_exit(NULL);
+    Lista_free(&lista);
+
+    pthread_exit(NULL);sem_post(&mutex);
 }
 
 void iterative_merge(char** files, int num_files) {
     while (num_files > 1) {
-        int next_num_files = 0;
+        int siguiente_num_files = 0;
         pthread_t merge_threads[num_files / 2];
         merge_args_t merge_args[num_files / 2];
 
         for (int i = 0; i < num_files; i += 2) {
             if (i + 1 < num_files) {
-                merge_args[next_num_files].archivo_1 = files[i];
-                merge_args[next_num_files].archivo_2 = files[i + 1];
-                char tmp_filename[L_tmpnam];
-                tmpnam(tmp_filename);
-                
-                merge_args[next_num_files].arc = strdup(tmp_filename);
-                if (pthread_create(&merge_threads[next_num_files], NULL, merge_files, &merge_args[next_num_files])) {
+                merge_args[siguiente_num_files].archivo_1 = files[i];
+                merge_args[siguiente_num_files].archivo_2 = files[i + 1];
+                merge_args[siguiente_num_files].arc = tmpnam(NULL);
+                if (pthread_create(&merge_threads[siguiente_num_files], NULL, merge_files, &merge_args[siguiente_num_files])) {
                     printf("Error al crear thread de merge.\n");
                     exit(EXIT_FAILURE);
                 }
-                files[next_num_files++] = strdup(merge_args[next_num_files].arc);
+                files[siguiente_num_files++] = strdup(merge_args[siguiente_num_files].arc);
             } else {
-                files[next_num_files++] = files[i];
+                files[siguiente_num_files++] = files[i];
             }
         }
 
-        for (int i = 0; i < next_num_files; i++) {
+        for (int i = 0; i < siguiente_num_files; i++) {
             pthread_join(merge_threads[i], NULL);
         }
 
-        num_files = next_num_files;
+        num_files = siguiente_num_files;
     }
 
     if (num_files == 1) {
@@ -252,11 +290,11 @@ int main(int argc, char *argv[]) {
 
     iterative_merge(sorted_files, num_archivos);
 
-    for (int i = 0; i < num_archivos; i++) {
+    /*for (int i = 0; i < num_archivos; i++) {
         free(sorted_files[i]);
         free(argu[i].estadisticas->linea_corta);
         free(argu[i].estadisticas->linea_larga);
-    }
+    }*/
 
     sem_destroy(&mutex);
 
