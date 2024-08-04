@@ -84,16 +84,8 @@ void sort_final(){
         if (tamano_linea > tamano_largo) {
             tamano_largo = tamano_linea;
             linea_larga = strdup(buffer);
-        }else if (tamano_linea == tamano_largo && strcasecmp(buffer, linea_larga) > 0) {
-            // Si las longitudes son iguales y buffer es mayor lexicográficamente (decreciente)
-            tamano_largo = tamano_linea;
-            linea_larga = strdup(buffer);
         }
         if (tamano_corto == 0 || tamano_linea < tamano_corto) {
-            tamano_corto = tamano_linea;
-            linea_corta = strdup(buffer);
-        }else if (tamano_linea == tamano_corto && strcasecmp(buffer, linea_corta) > 0) {
-            // Si las longitudes son iguales y buffer es mayor lexicográficamente (decreciente)
             tamano_corto = tamano_linea;
             linea_corta = strdup(buffer);
         }
@@ -178,20 +170,12 @@ void* sort_file(void* arg) {
         if (tamano_linea > stats->tamano_largo) {
             stats->tamano_largo = tamano_linea;
             stats->linea_larga = strdup(buffer);
-        }else if (tamano_linea == stats->tamano_largo && strcasecmp(buffer, stats->linea_larga) > 0) {
-            // Si las longitudes son iguales y buffer es mayor lexicográficamente (decreciente)
-            stats->tamano_largo = tamano_linea;
-            stats->linea_larga = strdup(buffer);
         }
-
         if (stats->tamano_corto == 0 || tamano_linea < stats->tamano_corto) {
             stats->tamano_corto = tamano_linea;
             stats->linea_corta = strdup(buffer);
-        }else if (tamano_linea == stats->tamano_corto && strcasecmp(buffer, stats->linea_corta) > 0) {
-            // Si las longitudes son iguales y buffer es mayor lexicográficamente (decreciente)
-            stats->tamano_corto = tamano_linea;
-            stats->linea_corta = strdup(buffer);
         }
+
         cant_lineas++;
     }
     fclose(archivo);
